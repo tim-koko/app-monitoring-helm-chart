@@ -1,0 +1,38 @@
+{{- if .Values.alertmanagerConfig.caInject.enabled }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  labels:
+    {{ toYaml .Values.alertmanagerConfig.caInject.label }}
+    {{- include "monitoring.labels" . | nindent 4 }}
+  name: {{ .Values.alertmanagerConfig.caInject.configMapName | default "ca-inject" }}
+{{- if not .Values.alertmanagerConfig.caInject.skipData }}
+data: {}
+{{- end }}
+{{- end }}
+{{- if .Values.alertmanagerConfig.enabled }}
+---
+apiVersion: monitoring.coreos.com/v1beta1
+kind: AlertmanagerConfig
+metadata:
+  name: {{ .Release.Name }}-am-config
+  labels:
+    {{- include "monitoring.labels" . | nindent 4 }}
+spec:
+  {{- with .Values.alertmanagerConfig.inhibitRules }}
+  inhibitRules:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+  {{- with .Values.alertmanagerConfig.receivers }}
+  receivers:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+  {{- with .Values.alertmanagerConfig.route }}
+  route:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+  {{- with .Values.alertmanagerConfig.timeIntervals }}
+  timeIntervals:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+{{- end }}

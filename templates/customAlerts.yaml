@@ -1,0 +1,22 @@
+{{- if .Values.alerts.additionalAlerts.enabled }}
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: {{ .Release.Name }}-custom-alerts
+  labels:
+    {{- include "monitoring.labels" . | nindent 4 }}
+    {{- with .Values.alerts.extraLabels }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+  {{- with .Values.alerts.extraAnnotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  groups:
+  - name: {{ .Values.alerts.additionalAlerts.groupName | default "custom-alerts" }}
+    rules:
+    {{- with .Values.alerts.additionalAlerts.prometheusRules }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+{{- end }}

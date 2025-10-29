@@ -1,0 +1,151 @@
+## alertmanagerConfig section allows to configure a custom alertmanagerConfig to configure alert routing on OpenShift User Workload Monitoring stack
+## Disabled by default
+alertmanagerConfig:
+  # -- Enable 'alertmanagerConfig' creation
+  enabled: false
+  ## creeate the config Map to automatically inject the ca
+  ## Disabled by default
+  caInject:
+    # -- Enable caInjection
+    enabled: false
+    # -- Name of the Confimap resource
+    configMapName: ca-inject
+    # -- Parameter whether the config maps data element is skipped or not, used for Git Ops setup
+    skipData: true
+    # -- The actual Label which indicates to injet the ca 
+    ## Default config.openshift.io/inject-trusted-cabundle: 'true'
+    label:
+      config.openshift.io/inject-trusted-cabundle: 'true'
+  # -- inhibitRules Config: schema https://pkg.go.dev/github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring@v0.67.1/v1beta1#AlertmanagerConfigSpec
+  inhibitRules: []
+    # example inhibitRules config. This section is passed directly to the AlertmanagerConfig CRD
+    # - equal:
+    #     - "namespace"
+    #     - "alertname"
+    #   sourceMatch:
+    #     - name: "severity"
+    #       value: "critical"
+    #   targetMatch:
+    #     - matchType: "=~"
+    #       name: "severity"
+    #       value: "warning|info"
+    
+  # -- Receiver Config: schema https://pkg.go.dev/github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring@v0.67.1/v1beta1#AlertmanagerConfigSpec
+  receivers: []
+    # example receiver config. This section is passed directly to the AlertmanagerConfig CRD
+    # - name: email
+    #   emailConfigs:
+    #     - from: "monitoring <from@example.com>"
+    #       to: "to@example.com"
+    #       sendResolved: false
+    #       smarthost: "smtp.example.com:25"
+    #       tlsConfig:
+    #         ca:
+    #           configMap:
+    #             key: ca-bundle.crt
+    #             name: ca-inject
+    #         cert: {}
+    # - name: webhook
+    #   webhookConfigs:
+    #     - url: https://url
+    #       sendResolved: false
+    #       httpConfig:
+    #         basicAuth:
+    #           username: 
+    #             key: username
+    #             name: credentials
+    #           password:
+    #             key: password
+    #             name: credentials
+    #         tlsConfig:
+    #           ca:
+    #             configMap:
+    #               key: ca-bundle.crt
+    #               name: ca-inject
+    #           cert: {}
+  # -- Routing Config: schema https://pkg.go.dev/github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring@v0.67.1/v1beta1#AlertmanagerConfigSpec
+  route: {}
+    # example routing config. This section is passed directly to the AlertmanagerConfig CRD
+    # receiver: email
+    # groupWait: 3m
+    # groupInterval: 5m
+    # repeatInterval: 7d
+    # groupBy:
+    #   - namespace
+    # routes:
+    #   - matchers:
+    #     - name: severity
+    #       value: warning
+    #     receiver: email
+    #     continue: true
+    #   - matchers:
+    #     - name: severity
+    #       value: warning
+    #     receiver: webhook
+    #     continue: true
+    #   - matchers:
+    #     - name: severity
+    #       value: critical
+    #     receiver: email-critical
+    #     continue: true
+    #   - matchers:
+    #     - name: severity
+    #       value: critical
+    #     receiver: webhook-critical
+    #     continue: false
+  # -- TimeIntervals Config: schema https://pkg.go.dev/github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring@v0.67.1/v1beta1#AlertmanagerConfigSpec
+  timeIntervals: []
+    # example timeIntervals Config to use the timeIntervals in route configuration
+    # - name: "muteMaintenance"
+    #   timeIntervals:
+    #   - times:
+    #     - startTime: "23:45"
+    #       endTime: "24:00"
+    # - name: "muteMaintenance"
+    #   timeIntervals:
+    #   - times:
+    #     - startTime: "00:00"
+    #       endTime: "00:15"
+## the alerts section allows to configure and deploy a set of monitoring alerts
+## Disabled by default
+alerts:
+  ## common alerts
+  common:
+    enabled: false
+    thresholds:
+      # -- throttling threshold seconds per second or %
+      throttlingThreshold: 0.2 # 20%
+    durations:
+      # -- Job duration threshold
+      jobMaxRuntimeSeconds: 43200
+  
+  # -- Yaml additional Alert Labels for the PrometheusRules this can be used for routing purposes
+  extraAlertLabels: {}
+  #  alerting: "team-xy"
+  
+  # -- Additional Labels for the PrometheusRules
+  extraLabels: {}
+  #  app: "applicationName"
+  
+  # -- Additional Annotations for the PrometheusRules
+  extraAnnotations: {}
+  #  annotation: "test"
+
+  ## Additional PrometheusRules can be added as plain PrometheusRule. This should be only used as workaround if some rules are missing in the default set. Additional rules should end up as predifined rule, so that also other teams can benefit from it
+  ## Disabled by default
+  additionalAlerts:
+    enabled: false
+    # -- Prometheus Rule Group Name
+    groupName: custom-alerts
+    # -- Yaml of a list of alert Rules
+    prometheusRules: {}
+      # Example rule, make sure to set the proper labels and queries:
+      # - alert: KubePodRestarting
+      #   annotations:
+      #     message: "Pod {{$labels.pod}} in namespace {{$labels.namespace}}: restart\
+      #       \ count in the last 15 minutes is higher than 3. Current value is: {{$value}}'"
+      #     summary: high pod restart count
+      #   expr: |
+      #     increase(kube_pod_container_status_restarts_total{namespace="namespace"}[15m]) > 3
+      #   labels:
+      #     severity: warning
