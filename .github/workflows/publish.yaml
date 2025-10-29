@@ -1,0 +1,72 @@
+name: Publish Helm Chart
+
+# Run this workflow every time a new tag that looks like a version is pushed
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+  # Allows you to run this workflow manually from the Actions tab
+  workflow_dispatch:
+
+# Set default permissions for the GITHUB_TOKEN
+permissions:
+  contents: read
+  packages: write # This is required to push to GitHub Packages
+
+jobs:
+  publish:
+    name: Lint, Package, and Publish
+    runs-on: ubuntu-latest
+
+    env:
+      # IMPORTANT: Set this to the path of your Helm chart
+      CHART_PATH: . 
+
+    steps:
+      - name: 1. Checkout
+        uses: actions/checkout@v4
+        # We need to fetch all tags to get the version
+        with:
+          fetch-depth: 0 
+
+      - name: 2. Install Helm
+        uses: azure/setup-helm@v4
+        with:
+          # Specify the version of Helm to use
+          version: 'v3.15.2'
+
+      - name: 3. Get Chart Info
+        id: chart_info
+        run: |
+          # Get the chart name and version from Chart.yaml
+          CHART_NAME=$(grep '^name:' ${{ env.CHART_PATH }}/Chart.yaml | awk '{print $2}')
+          CHART_VERSION=$(grep '^version:' ${{ env.CHART_PATH }}/Chart.yaml | awk '{print $2}')
+          
+          # Output them to be used in later steps
+          echo "::set-output name=name::$CHART_NAME"
+          echo "::set-output name=version::$CHART_VERSION"
+          echo "Publishing $CHART_NAME version $CHART_VERSION"
+
+      - name: 4. Lint Helm Chart
+        run: helm lint ${{ env.CHART_PATH }}
+
+      - name: 5. Package Helm Chart
+        run: |
+          # helm package will create a .tgz file like my-chart-1.2.0.tgz
+          helm package ${{ env.CHART_PATH }}
+
+      - name: 6. Log in to GitHub Container Registry
+        run: |
+          # Log in to the GitHub Package Registry (which uses GHCR)
+          # The GITHUB_TOKEN is automatically provided by GitHub Actions
+          echo "${{ secrets.GITHUB_TOKEN }}" | helm registry login ghcr.io -u ${{ github.actor }} --password-stdin
+
+      - name: 7. Push Helm Chart to GHCR
+        run: |
+          # This is the chart file created by 'helm package'
+          CHART_FILE="${{ steps.chart_info.outputs.name }}-${{ steps.chart_info.outputs.version }}.tgz"
+          
+          # Push the chart to the OCI registry
+          # The URL format is oci://ghcr.io/<YOUR_GITHUB_USERNAME_OR_ORG>
+          echo "Pushing $CHART_FILE to oci://ghcr.io/${{ github.repository_owner }}/"
+          helm push $CHART_FILE oci://ghcr.io/${{ github.repository_owner }}/

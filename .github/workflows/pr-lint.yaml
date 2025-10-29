@@ -1,0 +1,26 @@
+name: Lint Helm Chart on PR
+
+on:
+  pull_request:
+
+jobs:
+  lint-chart:
+    name: Lint Chart
+    runs-on: ubuntu-latest
+
+    env:
+      CHART_PATH: .
+
+    steps:
+      - name: 1. Checkout
+        uses: actions/checkout@v4
+
+      - name: 2. Install Helm
+        uses: azure/setup-helm@v4
+        with:
+          version: 'v3.15.2'
+
+      - name: 3. Lint Helm Chart
+        run: |
+          echo "Linting chart at ${{ env.CHART_PATH }}"
+          helm lint ${{ env.CHART_PATH }}
