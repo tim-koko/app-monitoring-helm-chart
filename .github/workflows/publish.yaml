@@ -6,7 +6,6 @@ on:
       - 'v*.*.*'
   workflow_dispatch:
 
-
 permissions:
   contents: read
   packages: write 
@@ -43,11 +42,18 @@ jobs:
       - name: 4. Lint Helm Chart
         run: helm lint ${{ env.CHART_PATH }}
 
-      - name: 5. Log in to GitHub Container Registry
+      - name: 5. Package Helm Chart
+        run: |
+          helm package ${{ env.CHART_PATH }}
+
+      - name: 6. Log in to GitHub Container Registry
         run: |
           echo "${{ secrets.GITHUB_TOKEN }}" | helm registry login ghcr.io -u ${{ github.actor }} --password-stdin
 
-      - name: 6. Push Helm Chart to GHCR
+      - name: 7. Push Helm Chart to GHCR
         run: |
-          echo "Pushing chart from ${{ env.CHART_PATH }} to oci://ghcr.io/${{ github.repository_owner }}/"
-          helm push ${{ env.CHART_PATH }} oci://ghcr.io/${{ github.repository_owner }}/
+          CHART_FILE="${{ steps.chart_info.outputs.name }}-${{ steps.chart_info.outputs.version }}.tgz"
+          
+          echo "Pushing $CHART_FILE to oci://ghcr.io/${{ github.repository_owner }}/"
+          helm push $CHART_FILE oci://ghcr.io/${{ github.repository_owner }}/
+
